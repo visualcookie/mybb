@@ -1,6 +1,9 @@
 # MyBB Docker Image
 
-[![Build and Publish](https://github.com/visualcookie/mybb/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/visualcookie/mybb/actions/workflows/docker-publish.yml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/visualcookie/mybb/docker-publish.yml?style=for-the-badge&label=Docker%20Image)
+![GitHub Stars](https://img.shields.io/github/stars/visualcookie/mybb?style=for-the-badge)
+![GitHub License](https://img.shields.io/github/license/visualcookie/mybb?style=for-the-badge)
+![GHCR](https://img.shields.io/badge/ghcr.io-visualcookie%2Fmybb-blue?style=for-the-badge&logo=docker)
 
 A flexible Docker image for [MyBB](https://mybb.com/) forum software that supports any version of MyBB.
 

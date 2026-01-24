@@ -168,12 +168,6 @@ docker pull ghcr.io/visualcookie/mybb:1836
 
 Find available versions at: https://github.com/mybb/mybb/releases
 
-Common versions:
-- `1836` - MyBB 1.8.36 (latest)
-- `1835` - MyBB 1.8.35
-- `1834` - MyBB 1.8.34
-- `1833` - MyBB 1.8.33
-
 ### Build Arguments
 
 When building the image, you can specify the MyBB version:

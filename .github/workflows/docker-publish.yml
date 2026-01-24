@@ -10,12 +10,6 @@ on:
       - 'Dockerfile'
       - 'docker-entrypoint.sh'
       - '.github/workflows/docker-publish.yml'
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
-      - 'docker-compose*.yml'
-      - 'env.example'
   pull_request:
     branches:
       - main

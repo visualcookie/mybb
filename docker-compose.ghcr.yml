@@ -3,7 +3,7 @@
 
 services:
   mybb:
-    image: ghcr.io/visualcookie/mybb:${MYBB_VERSION:-1839}
+    image: ghcr.io/visualcookie/mybb:${MYBB_TAG:-latest}
     container_name: mybb-forum
     restart: unless-stopped
     ports:

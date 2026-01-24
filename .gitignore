@@ -1,0 +1,40 @@
+# Environment files (keep example)
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Backups
+*.bak
+*.backup
+backups/
+
+# MyBB local files (if testing locally)
+uploads/
+cache/
+inc/config.php
+inc/settings.php

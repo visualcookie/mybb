@@ -1,0 +1,115 @@
+services:
+  mybb:
+    build:
+      context: .
+      args:
+        MYBB_VERSION: ${MYBB_VERSION:-1839}
+    image: mybb:${MYBB_VERSION:-1839}
+    container_name: mybb-forum
+    restart: unless-stopped
+    ports:
+      - "${MYBB_PORT:-8080}:80"
+    environment:
+      - MYBB_VERSION=${MYBB_VERSION:-1839}
+      - DB_HOST=mybb-db
+      - DB_PORT=3306
+      - DB_USER=${MYSQL_USER:-mybb}
+      - DB_PASSWORD=${MYSQL_PASSWORD:-mybb_password}
+      - DB_NAME=${MYSQL_DATABASE:-mybb}
+      - TZ=${TZ:-UTC}
+      # Upgrade mode options
+      - UPGRADE_MODE=${UPGRADE_MODE:-false}
+      - PRESERVE_PLUGINS=${PRESERVE_PLUGINS:-true}
+      - PRESERVE_THEMES=${PRESERVE_THEMES:-true}
+    volumes:
+      # Main webroot volume (shared with SFTP)
+      - mybb_data:/var/www/html
+    depends_on:
+      mybb-db:
+        condition: service_healthy
+    networks:
+      - mybb-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  mybb-db:
+    image: mariadb:10.11
+    container_name: mybb-database
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root_password}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-mybb}
+      - MYSQL_USER=${MYSQL_USER:-mybb}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-mybb_password}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - mybb_db_data:/var/lib/mysql
+    networks:
+      - mybb-network
+    healthcheck:
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-buffer-pool-size=256M --max-connections=200
+
+  # Optional: SFTP server for file management
+  # Access MyBB files via SFTP for uploading themes, plugins, manual edits
+  sftp:
+    image: atmoz/sftp:latest
+    container_name: mybb-sftp
+    restart: unless-stopped
+    ports:
+      - "${SFTP_PORT:-2222}:22"
+    volumes:
+      # Mount the same webroot volume - files appear in /home/USER/mybb/
+      - mybb_data:/home/${SFTP_USER:-mybb}/mybb
+      # Optional: Mount SSH host keys for persistent server identity
+      - mybb_sftp_keys:/etc/ssh/keys
+    environment:
+      - TZ=${TZ:-UTC}
+    # Format: user:password:UID:GID:directories
+    # UID 33 = www-data on Debian/Ubuntu (matches Apache container)
+    command: ${SFTP_USER:-mybb}:${SFTP_PASSWORD:-mybb_sftp_pass}:33:33:mybb
+    networks:
+      - mybb-network
+    profiles:
+      - sftp
+      - tools
+
+  # Optional: phpMyAdmin for database management
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: mybb-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "${PMA_PORT:-8081}:80"
+    environment:
+      - PMA_HOST=mybb-db
+      - PMA_USER=${MYSQL_USER:-mybb}
+      - PMA_PASSWORD=${MYSQL_PASSWORD:-mybb_password}
+      - UPLOAD_LIMIT=64M
+    depends_on:
+      - mybb-db
+    networks:
+      - mybb-network
+    profiles:
+      - tools
+
+networks:
+  mybb-network:
+    driver: bridge
+
+volumes:
+  mybb_data:
+    name: mybb_data
+  mybb_db_data:
+    name: mybb_db_data
+  mybb_sftp_keys:
+    name: mybb_sftp_keys

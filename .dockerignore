@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+docker-compose*.yml
+.env
+.env.*
+!.env.example
+
+# Documentation
+README.md
+LICENSE
+*.md
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/

@@ -3,7 +3,7 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/visualcookie/mybb/docker-publish.yml?style=for-the-badge&label=Docker%20Image)
 ![GitHub Stars](https://img.shields.io/github/stars/visualcookie/mybb?style=for-the-badge)
 ![GitHub License](https://img.shields.io/github/license/visualcookie/mybb?style=for-the-badge)
-![GHCR](https://img.shields.io/badge/ghcr.io-visualcookie%2Fmybb-blue?style=for-the-badge&logo=docker)
+![GHCR](https://img.shields.io/badge/ghcr.io-visualcookie%2Fmybb-blue?style=for-the-badge&logo=docker) ![Assisted Using Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=claude&logoColor=white)
 
 A flexible Docker image for [MyBB](https://mybb.com/) forum software that supports any version of MyBB.
 
@@ -23,35 +23,7 @@ A flexible Docker image for [MyBB](https://mybb.com/) forum software that suppor
 
 ### Using Docker Compose (Recommended)
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/visualcookie/mybb.git
-   cd mybb
-   ```
-
-2. **Create environment file:**
-   ```bash
-   cp env.example .env
-   ```
-
-3. **Edit `.env` with your settings:**
-   ```bash
-   # Set your desired MyBB version
-   MYBB_VERSION=1839
-   
-   # Set secure database passwords
-   MYSQL_ROOT_PASSWORD=your_secure_root_password
-   MYSQL_PASSWORD=your_secure_password
-   ```
-
-4. **Build and start the containers:**
-   ```bash
-   docker compose up -d --build
-   ```
-
-5. **Access MyBB:**
-   - MyBB Forum: http://localhost:8080
-   - Complete the installation wizard at http://localhost:8080/install/
+There's an example [Docker compose file](./docker-compose.ghcr.yml) in this repo, which pulls this image.
 
 ### Using Docker CLI
 

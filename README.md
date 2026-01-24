@@ -16,48 +16,9 @@ A flexible Docker image for [MyBB](https://mybb.com/) forum software that suppor
 - 📂 Optional SFTP server for file management (themes, plugins, updates)
 - 📦 Optional phpMyAdmin for database management
 
-## Pre-built Images
-
-Pre-built images are available on GitHub Container Registry:
-
-```bash
-# Pull latest
-docker pull ghcr.io/visualcookie/mybb:latest
-
-# Pull specific MyBB version
-docker pull ghcr.io/visualcookie/mybb:1839
-docker pull ghcr.io/visualcookie/mybb:1838
-docker pull ghcr.io/visualcookie/mybb:1837
-docker pull ghcr.io/visualcookie/mybb:1836
-```
-
 ## Quick Start
 
-### Option A: Using Pre-built Image (Easiest)
-
-1. **Download the compose file:**
-   ```bash
-   curl -O https://raw.githubusercontent.com/visualcookie/mybb/main/docker-compose.ghcr.yml
-   curl -O https://raw.githubusercontent.com/visualcookie/mybb/main/env.example
-   cp env.example .env
-   ```
-
-2. **Edit `.env` with your settings:**
-   ```bash
-   MYBB_VERSION=1839
-   MYSQL_ROOT_PASSWORD=your_secure_root_password
-   MYSQL_PASSWORD=your_secure_password
-   ```
-
-3. **Start the containers:**
-   ```bash
-   docker compose -f docker-compose.ghcr.yml up -d
-   ```
-
-4. **Access MyBB:**
-   - Visit http://localhost:8080/install/ to complete setup
-
-### Option B: Build Locally (Docker Compose)
+### Using Docker Compose (Recommended)
 
 1. **Clone the repository:**
    ```bash
@@ -93,7 +54,7 @@ docker pull ghcr.io/visualcookie/mybb:1836
 
 1. **Build the image:**
    ```bash
-   docker build -t mybb:1836 --build-arg MYBB_VERSION=1836 .
+   docker build -t mybb .
    ```
 
 2. **Create a network:**
@@ -120,12 +81,13 @@ docker pull ghcr.io/visualcookie/mybb:1836
      --name mybb-forum \
      --network mybb-network \
      -p 8080:80 \
+     -e MYBB_VERSION=1839 \
      -e DB_HOST=mybb-db \
      -e DB_USER=mybb \
      -e DB_PASSWORD=mybb_password \
      -e DB_NAME=mybb \
      -v mybb_data:/var/www/html \
-     mybb:1836
+     mybb
    ```
 
 5. **Access MyBB at http://localhost:8080**
@@ -147,7 +109,7 @@ docker pull ghcr.io/visualcookie/mybb:1836
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `MYBB_VERSION` | MyBB version number (e.g., 1836) | `1836` |
+| `MYBB_VERSION` | MyBB version number (e.g., 1839) | `1839` |
 | `MYBB_PORT` | Web server port | `8080` |
 | `DB_HOST` | Database hostname | - |
 | `DB_PORT` | Database port | `3306` |
@@ -166,19 +128,9 @@ docker pull ghcr.io/visualcookie/mybb:1836
 
 ### MyBB Versions
 
-Find available versions at: https://github.com/mybb/mybb/releases
+You can use any MyBB version by setting `MYBB_VERSION` in your `.env` file. The version is downloaded at container startup.
 
-### Build Arguments
-
-When building the image, you can specify the MyBB version:
-
-```bash
-# Build with specific version
-docker build -t mybb:1835 --build-arg MYBB_VERSION=1835 .
-
-# Build with latest version
-docker build -t mybb:latest --build-arg MYBB_VERSION=1836 .
-```
+Find all available versions at: https://github.com/mybb/mybb/releases
 
 ## Volumes
 

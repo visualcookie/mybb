@@ -6,9 +6,22 @@ on:
       - main
     tags:
       - 'v*'
+    paths:
+      - 'Dockerfile'
+      - 'docker-entrypoint.sh'
+      - '.github/workflows/docker-publish.yml'
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'docker-compose*.yml'
+      - 'env.example'
   pull_request:
     branches:
       - main
+    paths:
+      - 'Dockerfile'
+      - 'docker-entrypoint.sh'
   workflow_dispatch:
     inputs:
       mybb_version:

@@ -353,6 +353,10 @@ docker run -d \
 
 This Docker configuration is provided as-is. MyBB itself is licensed under the LGPL v3.
 
+## Disclaimer about use of AI
+
+I used AI on parts of this project e.g. for the README.md file and the Dockerfile as well as the docker-entrypoint.sh file to help me write it faster. I oriented myself on the existing Docker image for MyBB: https://github.com/mybb/docker
+
 ## Contributing
 
 Contributions are welcome! Please submit issues and pull requests.

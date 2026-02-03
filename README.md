@@ -14,7 +14,7 @@ A Docker image for [MyBB](https://mybb.com/) forum software with MyBB baked into
 - 💾 Persistent data storage with Docker volumes
 - 🔒 Secure default configuration
 - 🚀 Optimized PHP configuration for MyBB
-- ⬆️ Safe upgrade mode preserving configs, uploads, themes, and plugins
+- ⬆️ Automatic file sync preserving existing configs on upgrade
 - ❤️ Health checks for container orchestration
 - 📂 Optional SFTP server for file management (themes, plugins, updates)
 - 📦 Optional phpMyAdmin for database management
@@ -90,15 +90,7 @@ There's an example [Docker compose file](./docker-compose.ghcr.yml) in this repo
 | `DB_USER` | Database username | `root` |
 | `DB_PASSWORD` | Database password | - |
 | `DB_NAME` | Database name | `mybb` |
-| `FORCE_REINSTALL` | Force reinstall MyBB | `false` |
-| `SFTP_PORT` | SFTP server port | `2222` |
-| `SFTP_USER` | SFTP username | `mybb` |
-| `SFTP_PASSWORD` | SFTP password | `mybb_sftp_pass` |
-| `PMA_PORT` | phpMyAdmin port | `8081` |
 | `TZ` | Timezone | `UTC` |
-| `UPGRADE_MODE` | Enable safe upgrade mode | `false` |
-| `PRESERVE_PLUGINS` | Keep plugins during upgrade | `true` |
-| `PRESERVE_THEMES` | Keep themes during upgrade | `true` |
 
 ### MyBB Versions
 
@@ -224,91 +216,25 @@ After starting the containers, complete the MyBB setup:
    docker exec mybb-forum rm -rf /var/www/html/install
    ```
 
-## Upgrading MyBB (Safe Upgrade Mode)
+## Upgrading MyBB
 
-This image includes a **safe upgrade mode** that preserves your configuration, uploads, themes, and plugins while updating MyBB core files.
-
-### Quick Upgrade Steps
-
-1. **Update to a new image** with the desired MyBB version (change image tag or rebuild)
-
-2. **Enable upgrade mode** in `.env`:
-   ```bash
-   UPGRADE_MODE=true
-   ```
-
-3. **Restart the container:**
-   ```bash
-   docker compose down && docker compose up -d
-   ```
-
-4. **Complete the upgrade:**
-   - Visit `http://localhost:8080/install/upgrade.php`
-   - Follow the upgrade wizard
-
-5. **Cleanup:**
-   ```bash
-   docker exec mybb-forum rm -rf /var/www/html/install
-   docker exec mybb-forum rm -f /var/www/html/UPGRADE_IN_PROGRESS.txt
-   # Set UPGRADE_MODE=false in .env
-   ```
-
-### What Gets Preserved
-
-| Item | Preserved | Notes |
-|------|-----------|-------|
-| `inc/config.php` | ✅ Always | Database configuration |
-| `inc/settings.php` | ✅ Always | Forum settings |
-| `uploads/` | ✅ Always | User avatars, attachments |
-| `inc/plugins/` | ✅ Default | Set `PRESERVE_PLUGINS=false` to reset |
-| `images/` | ✅ Default | Set `PRESERVE_THEMES=false` to reset |
-| `inc/languages/` | ✅ Always | Language customizations |
-
-### What Gets Updated
-
-- All core PHP files
-- JavaScript files
-- Default images/icons
-- Install/upgrade scripts
-
-### Upgrade Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `UPGRADE_MODE` | Enable safe upgrade mode | `false` |
-| `PRESERVE_PLUGINS` | Keep existing plugins | `true` |
-| `PRESERVE_THEMES` | Keep existing themes | `true` |
-
-### Automatic Backups
-
-Before upgrading, the script automatically backs up critical files to `/var/www/html/admin/backups/`:
-- `pre_upgrade_TIMESTAMP_config.php`
-- `pre_upgrade_TIMESTAMP_settings.php`
-- `pre_upgrade_TIMESTAMP_plugins_list.txt`
-- `pre_upgrade_TIMESTAMP_themes_list.txt`
-
-### Manual Backup (Recommended)
-
-For extra safety, create a full backup before upgrading:
+To upgrade, pull/build a new image and restart. The entrypoint syncs new files while preserving existing ones (config, uploads, plugins, themes).
 
 ```bash
-# Backup files
-docker exec mybb-forum tar -czvf /tmp/mybb-backup.tar.gz /var/www/html
-docker cp mybb-forum:/tmp/mybb-backup.tar.gz ./mybb-backup.tar.gz
+# Update image tag in docker-compose.ghcr.yml, then:
+docker compose down && docker compose pull && docker compose up -d
 
-# Backup database
-docker exec mybb-database mysqldump -u mybb -p mybb > mybb-database-backup.sql
+# Or rebuild locally with new version:
+docker compose down
+docker compose build --build-arg MYBB_VERSION=1840
+docker compose up -d
 ```
 
-### Alternative: Manual Upgrade via SFTP
+After restart, visit `/install/upgrade.php` if MyBB requires database migrations, then delete the install folder:
 
-If you prefer manual control, use SFTP:
-
-1. Download new MyBB from [mybb.com](https://mybb.com/download/)
-2. Connect via SFTP (see SFTP section above)
-3. Upload new files, but **skip** `inc/config.php`
-4. Visit `/install/upgrade.php`
-5. Delete the install folder
+```bash
+docker exec mybb-forum rm -rf /var/www/html/install
+```
 
 ## Troubleshooting
 
@@ -333,14 +259,6 @@ docker exec mybb-forum chmod -R 777 /var/www/html/uploads /var/www/html/cache
 - Ensure the database container is healthy: `docker ps`
 - Verify credentials in `.env` match the installation wizard inputs
 - Check if the network is properly configured
-
-### Force reinstall MyBB
-```bash
-docker run -d \
-  --name mybb-forum \
-  -e FORCE_REINSTALL=true \
-  ...
-```
 
 ## Security Recommendations
 

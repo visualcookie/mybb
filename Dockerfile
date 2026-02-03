@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     curl \
     wget \
+    rsync \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure and install PHP extensions required by MyBB

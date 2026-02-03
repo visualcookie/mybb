@@ -16,10 +16,6 @@ services:
       - DB_PASSWORD=${MYSQL_PASSWORD:-mybb_password}
       - DB_NAME=${MYSQL_DATABASE:-mybb}
       - TZ=${TZ:-UTC}
-      # Upgrade mode options
-      - UPGRADE_MODE=${UPGRADE_MODE:-false}
-      - PRESERVE_PLUGINS=${PRESERVE_PLUGINS:-true}
-      - PRESERVE_THEMES=${PRESERVE_THEMES:-true}
     volumes:
       # Main webroot volume (shared with SFTP)
       - mybb_data:/var/www/html

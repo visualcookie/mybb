@@ -32,7 +32,7 @@ get_image_version() {
     if [ -f "${MYBB_SOURCE_DIR}/.mybb_version" ]; then
         cat "${MYBB_SOURCE_DIR}/.mybb_version"
     else
-        echo "${MYBB_VERSION:-unknown}"
+        echo "unknown"
     fi
 }
 
@@ -47,76 +47,21 @@ get_installed_version() {
     fi
 }
 
-# Function to download MyBB (used only for upgrades to versions not in the image)
-download_mybb() {
-    local version=$1
-    local download_url="https://github.com/mybb/mybb/releases/download/mybb_${version}/mybb_${version}.zip"
-
-    log_info "Downloading MyBB version ${version}..."
-
-    # Download MyBB
-    if ! wget -q --show-progress -O /tmp/mybb.zip "$download_url"; then
-        log_error "Failed to download MyBB version ${version}"
-        log_info "Trying alternative URL format..."
-
-        # Try alternative URL format (some versions use different naming)
-        download_url="https://resources.mybb.com/downloads/mybb_${version}.zip"
-        if ! wget -q --show-progress -O /tmp/mybb.zip "$download_url"; then
-            log_error "Failed to download MyBB. Please check if version ${version} exists."
-            log_info "Available versions: https://github.com/mybb/mybb/releases"
-            return 1
-        fi
-    fi
-
-    return 0
-}
-
-# Function to extract MyBB to a target directory (used for upgrades)
-extract_mybb() {
-    local target_dir=$1
-
-    log_info "Extracting MyBB..."
-
-    # Extract to temporary directory
-    rm -rf /tmp/mybb_extract
-    unzip -q /tmp/mybb.zip -d /tmp/mybb_extract
-
-    # Find the Upload directory (MyBB packages contain Upload folder)
-    if [ -d "/tmp/mybb_extract/Upload" ]; then
-        cp -r /tmp/mybb_extract/Upload/* "$target_dir/"
-    elif [ -d "/tmp/mybb_extract/upload" ]; then
-        cp -r /tmp/mybb_extract/upload/* "$target_dir/"
-    else
-        # Some versions might extract directly
-        cp -r /tmp/mybb_extract/*/* "$target_dir/" 2>/dev/null || cp -r /tmp/mybb_extract/* "$target_dir/"
-    fi
-
-    # Cleanup
-    rm -rf /tmp/mybb.zip /tmp/mybb_extract
-
-    log_info "MyBB extracted successfully"
-}
-
-# Function to install MyBB from the pre-built image (fresh install)
+# Function to install MyBB from the pre-built image
 install_mybb() {
     local image_version=$(get_image_version)
 
-    log_info "Installing MyBB ${image_version} from pre-built image..."
+    log_info "Installing MyBB ${image_version} from image..."
 
-    # Verify source directory exists and contains MyBB
     if [ ! -d "${MYBB_SOURCE_DIR}" ] || [ ! -f "${MYBB_SOURCE_DIR}/index.php" ]; then
         log_error "MyBB source not found in image at ${MYBB_SOURCE_DIR}"
-        log_error "This image may not have been built correctly."
         return 1
     fi
 
-    # Copy MyBB from the pre-installed source to web root
     cp -r "${MYBB_SOURCE_DIR}"/* /var/www/html/
-
-    # Track the installed version
     echo "${image_version}" > /var/www/html/.mybb_version
 
-    log_info "MyBB ${image_version} installed successfully from image"
+    log_info "MyBB ${image_version} installed successfully"
 }
 
 # Function to create backup before upgrade
@@ -161,10 +106,10 @@ create_backup() {
     echo "$backup_dir/${backup_name}" > /tmp/last_backup_path
 }
 
-# Function to perform safe upgrade
+# Function to perform safe upgrade using the version baked into the image
 upgrade_mybb() {
-    local target_version=$1
-    
+    local target_version=$(get_image_version)
+
     log_info "=========================================="
     log_info "  MyBB SAFE UPGRADE MODE"
     log_info "=========================================="
@@ -187,12 +132,12 @@ upgrade_mybb() {
     
     # Step 1: Create backup
     log_info ""
-    log_info "Step 1/5: Creating backup..."
+    log_info "Step 1/4: Creating backup..."
     create_backup
-    
+
     # Step 2: Save files that must be preserved
     log_info ""
-    log_info "Step 2/5: Preserving critical files..."
+    log_info "Step 2/4: Preserving critical files..."
     
     mkdir -p /tmp/mybb_preserve
     
@@ -230,24 +175,21 @@ upgrade_mybb() {
         log_info "Preserved: inc/languages/ directory"
     fi
     
-    # Step 3: Download new version
+    # Step 3: Install new version from image
     log_info ""
-    log_info "Step 3/5: Downloading MyBB ${target_version}..."
-    if ! download_mybb "${target_version}"; then
-        log_error "Download failed! Aborting upgrade."
-        log_info "Your current installation is unchanged."
+    log_info "Step 3/4: Installing MyBB ${target_version} from image..."
+
+    if [ ! -d "${MYBB_SOURCE_DIR}" ] || [ ! -f "${MYBB_SOURCE_DIR}/index.php" ]; then
+        log_error "MyBB source not found in image. Aborting upgrade."
         rm -rf /tmp/mybb_preserve
         return 1
     fi
+
+    cp -r "${MYBB_SOURCE_DIR}"/* /var/www/html/
     
-    # Step 4: Extract new version (overwrite core files)
+    # Step 4: Restore preserved files
     log_info ""
-    log_info "Step 4/5: Installing new version..."
-    extract_mybb "/var/www/html"
-    
-    # Step 5: Restore preserved files
-    log_info ""
-    log_info "Step 5/5: Restoring preserved files..."
+    log_info "Step 4/4: Restoring preserved files..."
     
     # Restore config.php (CRITICAL)
     cp /tmp/mybb_preserve/config.php /var/www/html/inc/config.php
@@ -373,7 +315,7 @@ main() {
     if [ "${UPGRADE_MODE:-false}" = "true" ]; then
         log_warn "UPGRADE MODE ENABLED"
 
-        if upgrade_mybb "${MYBB_VERSION}"; then
+        if upgrade_mybb; then
             log_info "Upgrade preparation complete."
         else
             log_error "Upgrade failed!"

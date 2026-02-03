@@ -1,13 +1,8 @@
-# Docker Compose file for local development (builds image locally)
-# MyBB is downloaded and baked into the image at build time
-# Usage: docker compose up -d
-
 services:
   mybb:
     build:
       context: .
       args:
-        # MyBB version is baked into the image at build time
         MYBB_VERSION: ${MYBB_VERSION:-1839}
     image: mybb:${MYBB_VERSION:-1839}
     container_name: mybb-forum
@@ -15,8 +10,6 @@ services:
     ports:
       - "${MYBB_PORT:-8080}:80"
     environment:
-      # Note: MYBB_VERSION is determined by the image, not this env var
-      # This is passed for reference/logging only
       - DB_HOST=mybb-db
       - DB_PORT=3306
       - DB_USER=${MYSQL_USER:-mybb}

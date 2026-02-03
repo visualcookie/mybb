@@ -5,12 +5,13 @@
 ![GitHub License](https://img.shields.io/github/license/visualcookie/mybb?style=for-the-badge)
 ![GHCR](https://img.shields.io/badge/ghcr.io-visualcookie%2Fmybb-blue?style=for-the-badge&logo=docker) ![Assisted Using Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=claude&logoColor=white)
 
-A flexible Docker image for [MyBB](https://mybb.com/) forum software that supports any version of MyBB.
+A Docker image for [MyBB](https://mybb.com/) forum software with MyBB pre-installed at build time for reliability and security.
 
 ## Features
 
 - 🐳 Easy deployment with Docker or Docker Compose
-- 🔄 Support for any MyBB version (configurable)
+- 📦 MyBB pre-installed in the image (no runtime downloads)
+- 🏷️ Version-tagged images for the 2 latest MyBB releases
 - 💾 Persistent data storage with Docker volumes
 - 🔒 Secure default configuration
 - 🚀 Optimized PHP configuration for MyBB
@@ -27,9 +28,14 @@ There's an example [Docker compose file](./docker-compose.ghcr.yml) in this repo
 
 ### Using Docker CLI
 
-1. **Build the image:**
+1. **Build the image (with MyBB version baked in):**
    ```bash
-   docker build -t mybb .
+   docker build --build-arg MYBB_VERSION=1839 -t mybb .
+   ```
+
+   Or pull a pre-built image:
+   ```bash
+   docker pull ghcr.io/visualcookie/mybb:latest
    ```
 
 2. **Create a network:**
@@ -56,7 +62,6 @@ There's an example [Docker compose file](./docker-compose.ghcr.yml) in this repo
      --name mybb-forum \
      --network mybb-network \
      -p 8080:80 \
-     -e MYBB_VERSION=1839 \
      -e DB_HOST=mybb-db \
      -e DB_USER=mybb \
      -e DB_PASSWORD=mybb_password \
@@ -84,7 +89,7 @@ There's an example [Docker compose file](./docker-compose.ghcr.yml) in this repo
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `MYBB_VERSION` | MyBB version number (e.g., 1839) | `1839` |
+| `MYBB_VERSION` | MyBB version (set at build time, read-only at runtime) | Baked into image |
 | `MYBB_PORT` | Web server port | `8080` |
 | `DB_HOST` | Database hostname | - |
 | `DB_PORT` | Database port | `3306` |
@@ -103,9 +108,31 @@ There's an example [Docker compose file](./docker-compose.ghcr.yml) in this repo
 
 ### MyBB Versions
 
-You can use any MyBB version by setting `MYBB_VERSION` in your `.env` file. The version is downloaded at container startup.
+MyBB is pre-installed in the image at build time, eliminating runtime download risks and ensuring consistent deployments.
 
-Find all available versions at: https://github.com/mybb/mybb/releases
+**Available pre-built images:**
+
+| Tag | MyBB Version | Notes |
+|-----|--------------|-------|
+| `latest` | 1839 | Latest stable, recommended |
+| `1839` | 1839 | Specific version |
+| `1838` | 1838 | Previous version |
+
+**Pull a specific version:**
+```bash
+docker pull ghcr.io/visualcookie/mybb:1839
+docker pull ghcr.io/visualcookie/mybb:1838
+```
+
+**Building for a different version:**
+
+If you need a MyBB version not available as a pre-built image, you can build locally:
+
+```bash
+docker build --build-arg MYBB_VERSION=1837 -t mybb:1837 .
+```
+
+Find all MyBB versions at: https://github.com/mybb/mybb/releases
 
 ## Volumes
 
@@ -221,16 +248,24 @@ This image includes a **safe upgrade mode** that preserves your configuration, u
 
 ### Quick Upgrade Steps
 
-1. **Edit `.env`** - Set the new version and enable upgrade mode:
+1. **Update the image tag** - Use a newer image with the desired MyBB version:
    ```bash
-   MYBB_VERSION=1839
-   UPGRADE_MODE=true
+   # In docker-compose.ghcr.yml, update the image tag:
+   image: ghcr.io/visualcookie/mybb:1839
    ```
 
-2. **Rebuild and restart:**
+   Or if building locally, rebuild with the new version:
+   ```bash
+   docker build --build-arg MYBB_VERSION=1839 -t mybb .
+   ```
+
+2. **Enable upgrade mode and restart:**
+   ```bash
+   # In .env:
+   UPGRADE_MODE=true
+   ```
    ```bash
    docker compose down
-   docker compose build --no-cache
    docker compose up -d
    ```
 
@@ -242,10 +277,10 @@ This image includes a **safe upgrade mode** that preserves your configuration, u
    ```bash
    # Remove the install folder
    docker exec mybb-forum rm -rf /var/www/html/install
-   
+
    # Remove the upgrade reminder file
    docker exec mybb-forum rm -f /var/www/html/UPGRADE_IN_PROGRESS.txt
-   
+
    # Disable upgrade mode in .env
    # UPGRADE_MODE=false (or remove the line)
    ```

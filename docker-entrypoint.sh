@@ -8,6 +8,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Source directory where MyBB is pre-installed at build time
+MYBB_SOURCE_DIR="${MYBB_SOURCE_DIR:-/opt/mybb-source}"
+
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
@@ -24,18 +27,38 @@ log_important() {
     echo -e "${BLUE}[IMPORTANT]${NC} $1"
 }
 
-# Function to download MyBB
+# Function to get the pre-installed MyBB version from the image
+get_image_version() {
+    if [ -f "${MYBB_SOURCE_DIR}/.mybb_version" ]; then
+        cat "${MYBB_SOURCE_DIR}/.mybb_version"
+    else
+        echo "${MYBB_VERSION:-unknown}"
+    fi
+}
+
+# Function to get the installed MyBB version from the volume
+get_installed_version() {
+    if [ -f "/var/www/html/.mybb_version" ]; then
+        cat "/var/www/html/.mybb_version"
+    elif [ -f "/var/www/html/inc/class_core.php" ]; then
+        grep -oP "public \\\$version = '\K[^']+" /var/www/html/inc/class_core.php 2>/dev/null || echo "unknown"
+    else
+        echo "none"
+    fi
+}
+
+# Function to download MyBB (used only for upgrades to versions not in the image)
 download_mybb() {
     local version=$1
     local download_url="https://github.com/mybb/mybb/releases/download/mybb_${version}/mybb_${version}.zip"
-    
+
     log_info "Downloading MyBB version ${version}..."
-    
+
     # Download MyBB
     if ! wget -q --show-progress -O /tmp/mybb.zip "$download_url"; then
         log_error "Failed to download MyBB version ${version}"
         log_info "Trying alternative URL format..."
-        
+
         # Try alternative URL format (some versions use different naming)
         download_url="https://resources.mybb.com/downloads/mybb_${version}.zip"
         if ! wget -q --show-progress -O /tmp/mybb.zip "$download_url"; then
@@ -44,20 +67,20 @@ download_mybb() {
             return 1
         fi
     fi
-    
+
     return 0
 }
 
-# Function to extract MyBB to a target directory
+# Function to extract MyBB to a target directory (used for upgrades)
 extract_mybb() {
     local target_dir=$1
-    
+
     log_info "Extracting MyBB..."
-    
+
     # Extract to temporary directory
     rm -rf /tmp/mybb_extract
     unzip -q /tmp/mybb.zip -d /tmp/mybb_extract
-    
+
     # Find the Upload directory (MyBB packages contain Upload folder)
     if [ -d "/tmp/mybb_extract/Upload" ]; then
         cp -r /tmp/mybb_extract/Upload/* "$target_dir/"
@@ -67,16 +90,33 @@ extract_mybb() {
         # Some versions might extract directly
         cp -r /tmp/mybb_extract/*/* "$target_dir/" 2>/dev/null || cp -r /tmp/mybb_extract/* "$target_dir/"
     fi
-    
+
     # Cleanup
     rm -rf /tmp/mybb.zip /tmp/mybb_extract
-    
+
     log_info "MyBB extracted successfully"
 }
 
-# Function to install MyBB (fresh install)
+# Function to install MyBB from the pre-built image (fresh install)
 install_mybb() {
-    extract_mybb "/var/www/html"
+    local image_version=$(get_image_version)
+
+    log_info "Installing MyBB ${image_version} from pre-built image..."
+
+    # Verify source directory exists and contains MyBB
+    if [ ! -d "${MYBB_SOURCE_DIR}" ] || [ ! -f "${MYBB_SOURCE_DIR}/index.php" ]; then
+        log_error "MyBB source not found in image at ${MYBB_SOURCE_DIR}"
+        log_error "This image may not have been built correctly."
+        return 1
+    fi
+
+    # Copy MyBB from the pre-installed source to web root
+    cp -r "${MYBB_SOURCE_DIR}"/* /var/www/html/
+
+    # Track the installed version
+    echo "${image_version}" > /var/www/html/.mybb_version
+
+    log_info "MyBB ${image_version} installed successfully from image"
 }
 
 # Function to create backup before upgrade
@@ -248,10 +288,13 @@ upgrade_mybb() {
     
     # Cleanup
     rm -rf /tmp/mybb_preserve
-    
+
+    # Track the upgraded version
+    echo "${target_version}" > /var/www/html/.mybb_version
+
     # Set permissions
     set_permissions
-    
+
     # Success message
     log_info ""
     log_info "=========================================="
@@ -316,13 +359,20 @@ set_permissions() {
 
 # Main execution
 main() {
+    local image_version=$(get_image_version)
+    local installed_version=$(get_installed_version)
+
     log_info "Starting MyBB Docker container..."
-    log_info "MyBB Version: ${MYBB_VERSION}"
-    
+    log_info "MyBB version in image: ${image_version}"
+
+    if [ "${installed_version}" != "none" ]; then
+        log_info "MyBB version installed: ${installed_version}"
+    fi
+
     # Check for upgrade mode FIRST
     if [ "${UPGRADE_MODE:-false}" = "true" ]; then
         log_warn "UPGRADE MODE ENABLED"
-        
+
         if upgrade_mybb "${MYBB_VERSION}"; then
             log_info "Upgrade preparation complete."
         else
@@ -335,10 +385,9 @@ main() {
             log_warn "FORCE REINSTALL enabled - this will overwrite existing files!"
         fi
         log_info "Installing MyBB..."
-        
-        # Download and install MyBB
-        if download_mybb "${MYBB_VERSION}"; then
-            install_mybb
+
+        # Install MyBB from the pre-built image (no download needed)
+        if install_mybb; then
             set_permissions
             log_info "MyBB installation complete!"
             log_info "Please visit http://your-server/install/ to complete the setup."
@@ -347,8 +396,20 @@ main() {
             exit 1
         fi
     else
-        log_info "MyBB already installed. Skipping download."
-        
+        log_info "MyBB already installed. Skipping installation."
+
+        # Check if image has a newer version than installed
+        if [ "${image_version}" != "${installed_version}" ] && [ "${installed_version}" != "unknown" ]; then
+            log_warn "=========================================="
+            log_warn "  VERSION MISMATCH DETECTED"
+            log_warn "=========================================="
+            log_warn "Installed version: ${installed_version}"
+            log_warn "Image version: ${image_version}"
+            log_warn ""
+            log_warn "To upgrade, set UPGRADE_MODE=true and restart the container."
+            log_warn "=========================================="
+        fi
+
         # Check for upgrade reminder
         if [ -f /var/www/html/UPGRADE_IN_PROGRESS.txt ]; then
             log_warn "=========================================="
@@ -357,7 +418,7 @@ main() {
             cat /var/www/html/UPGRADE_IN_PROGRESS.txt
             log_warn "=========================================="
         fi
-        
+
         # Still set permissions in case of volume mount issues
         set_permissions
     fi

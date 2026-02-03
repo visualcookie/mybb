@@ -2,17 +2,19 @@ FROM php:8.2-apache
 
 # OCI Labels for GitHub Container Registry
 LABEL org.opencontainers.image.source="https://github.com/visualcookie/mybb"
-LABEL org.opencontainers.image.description="MyBB Forum Software - Flexible Docker image supporting any MyBB version"
+LABEL org.opencontainers.image.description="MyBB Forum Software - Pre-built Docker image with MyBB included"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.title="MyBB Docker"
 LABEL org.opencontainers.image.vendor="visualcookie"
 
-# Build argument for MyBB version (can be overridden at build time)
-ARG MYBB_VERSION=1839
+# Build argument for MyBB version (REQUIRED at build time)
+ARG MYBB_VERSION
 
 # Environment variables
 ENV MYBB_VERSION=${MYBB_VERSION}
 ENV APACHE_DOCUMENT_ROOT=/var/www/html
+# Directory where MyBB is pre-installed at build time
+ENV MYBB_SOURCE_DIR=/opt/mybb-source
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -25,6 +27,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     curl \
     wget \
+    rsync \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure and install PHP extensions required by MyBB
@@ -61,6 +64,29 @@ RUN { \
     echo 'opcache.fast_shutdown=1'; \
     } > /usr/local/etc/php/conf.d/opcache-recommended.ini
 
+# Download and install MyBB at build time (not runtime)
+# This ensures the image contains a specific MyBB version and eliminates runtime download risks
+RUN set -eux; \
+    if [ -z "${MYBB_VERSION}" ]; then \
+        echo "ERROR: MYBB_VERSION build argument is required"; \
+        exit 1; \
+    fi; \
+    mkdir -p ${MYBB_SOURCE_DIR}; \
+    echo "Downloading MyBB version ${MYBB_VERSION}..."; \
+    wget -q -O /tmp/mybb.zip "https://github.com/mybb/mybb/releases/download/mybb_${MYBB_VERSION}/mybb_${MYBB_VERSION}.zip" \
+    || wget -q -O /tmp/mybb.zip "https://resources.mybb.com/downloads/mybb_${MYBB_VERSION}.zip"; \
+    unzip -q /tmp/mybb.zip -d /tmp/mybb_extract; \
+    if [ -d "/tmp/mybb_extract/Upload" ]; then \
+        cp -r /tmp/mybb_extract/Upload/* ${MYBB_SOURCE_DIR}/; \
+    elif [ -d "/tmp/mybb_extract/upload" ]; then \
+        cp -r /tmp/mybb_extract/upload/* ${MYBB_SOURCE_DIR}/; \
+    else \
+        cp -r /tmp/mybb_extract/*/* ${MYBB_SOURCE_DIR}/ 2>/dev/null || cp -r /tmp/mybb_extract/* ${MYBB_SOURCE_DIR}/; \
+    fi; \
+    rm -rf /tmp/mybb.zip /tmp/mybb_extract; \
+    echo "MyBB ${MYBB_VERSION} installed to ${MYBB_SOURCE_DIR}"; \
+    echo "${MYBB_VERSION}" > ${MYBB_SOURCE_DIR}/.mybb_version
+
 # Set working directory
 WORKDIR /var/www/html
 
@@ -75,7 +101,8 @@ RUN mkdir -p /var/www/html/uploads \
     /var/www/html/admin/backups
 
 # Set proper permissions
-RUN chown -R www-data:www-data /var/www/html
+RUN chown -R www-data:www-data /var/www/html \
+    && chown -R www-data:www-data ${MYBB_SOURCE_DIR}
 
 # Expose port 80
 EXPOSE 80

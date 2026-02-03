@@ -1,6 +1,3 @@
-# Docker Compose file using pre-built image from GitHub Container Registry
-# Usage: docker compose -f docker-compose.ghcr.yml up -d
-
 services:
   mybb:
     image: ghcr.io/visualcookie/mybb:${MYBB_TAG:-latest}
@@ -9,17 +6,12 @@ services:
     ports:
       - "${MYBB_PORT:-8080}:80"
     environment:
-      - MYBB_VERSION=${MYBB_VERSION:-1839}
       - DB_HOST=mybb-db
       - DB_PORT=3306
       - DB_USER=${MYSQL_USER:-mybb}
       - DB_PASSWORD=${MYSQL_PASSWORD:-mybb_password}
       - DB_NAME=${MYSQL_DATABASE:-mybb}
       - TZ=${TZ:-UTC}
-      # Upgrade mode options
-      - UPGRADE_MODE=${UPGRADE_MODE:-false}
-      - PRESERVE_PLUGINS=${PRESERVE_PLUGINS:-true}
-      - PRESERVE_THEMES=${PRESERVE_THEMES:-true}
     volumes:
       - mybb_data:/var/www/html
     depends_on:

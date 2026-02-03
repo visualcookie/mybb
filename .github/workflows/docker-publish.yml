@@ -20,12 +20,14 @@ on:
     inputs:
       mybb_version:
         description: 'MyBB version to build (e.g., 1839)'
-        required: false
+        required: true
         default: '1839'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # Latest MyBB version - update this when new MyBB versions are released
+  LATEST_MYBB_VERSION: '1839'
 
 jobs:
   build-and-push:
@@ -73,11 +75,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            MYBB_VERSION=${{ github.event.inputs.mybb_version || '1839' }}
+            MYBB_VERSION=${{ github.event.inputs.mybb_version || env.LATEST_MYBB_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Build multiple MyBB versions on release
+  # Build images for the 2 latest MyBB versions on release
+  # Update this matrix when new MyBB versions are released
   build-versions:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
@@ -86,7 +89,9 @@ jobs:
       packages: write
     strategy:
       matrix:
-        mybb_version: ['1836', '1837', '1838', '1839']
+        # Only the 2 latest MyBB versions are built to reduce maintenance burden
+        # Update these versions when new MyBB releases come out
+        mybb_version: ['1838', '1839']
 
     steps:
       - name: Checkout repository
